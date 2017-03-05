@@ -1,4 +1,4 @@
-import multiprocessing
+import multiprocessingtest
 import time
 
 def consumer(input_q):
@@ -15,8 +15,8 @@ def producer(sequence,output_q):
          output_q.put(item)
 
 if __name__ == '__main__':
-    q = multiprocessing.JoinableQueue()
-    const_p = multiprocessing.Process(target=consumer,args=(q,))
+    q = multiprocessingtest.JoinableQueue()
+    const_p = multiprocessingtest.Process(target=consumer, args=(q,))
     const_p.daemon = True
     const_p.start()
 
