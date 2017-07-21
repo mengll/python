@@ -1,0 +1,199 @@
+# -*- coding:utf-8 -*-
+import os
+import zipfile
+import xlrd
+import pymysql
+import logging
+from itertools import zip_longest
+import csv
+def ListToStr(lista):
+    back =""
+    for item in lista:
+        back += str(item)
+    return back
+#当前文件
+def LogInfo(content,logfile="dt_info.log"):
+    logging.basicConfig(filename=logfile,
+                        format='%(asctime)s -%(name)s-%(levelname)s-%(module)s:%(message)s',
+                        datefmt='%Y-%m-%d %H:%M:%S %p',
+                        level=logging.INFO)
+    logging.info(content)
+#加载当前的文件配置
+def getPath():
+    path = os.path.split (os.path.realpath (__file__))[0]
+    return path
+#解压文件
+def Unzip(target_dir,target_name):
+    zipfiles=zipfile.ZipFile(target_name,'r')
+    zipfiles.extractall(os.path.join(target_dir,os.path.splitext(target_name)[0]))
+    zipfiles.close()
+
+def NewCkIndex(row,wantcell):
+    indexer = 0 #保存当前渠道的索引
+    for iv in row:
+        if str(iv).strip().strip("`").strip("\t") == str(wantcell).strip().strip("`").strip("\t") :
+            return indexer
+        indexer +=1
+    return False
+
+#解析获取当前的索引值
+def ParseIndexer(row):
+    sn_arr  = ["商户流水号","商户订单号","sn"]  #保存订单名声字符集
+    fee_arr = ['交易金额（元）','收入（+元）',"交易金额","fee"]  #保存费用的字符集
+    cost_arr= ['商户结算金额（元）',"服务费（元）","手续费","fee","支出（-元）"]  #保存花费的字符集
+    sn_index  =0
+    fee_index =0
+    cost_index=0
+
+    for sn,fee,cost in zip_longest(sn_arr,fee_arr,cost_arr):
+        sn = NewCkIndex(row,str(sn).strip().strip("`").strip("\t"))
+        if sn !=False:
+            sn_index = sn
+
+        fee = NewCkIndex(row, str(fee).strip().strip("`").strip("\t"))
+        if fee !=False:
+            fee_index =fee
+
+        cost = NewCkIndex(row,str(cost).strip().strip("`").strip("\t"))
+        if cost !=False:
+            cost_index = cost
+    return [sn_index,fee_index,cost_index]  #生成的索引的字符集
+#解析当前的数据对象获取当前的索引
+def CkIndex(row,wantcell):
+    indexer = [] #保存当前渠道的索引
+    for cell in wantcell:
+        indexer.append(row.index(cell))
+    return indexer #返回当前的索引
+
+
+#解析csv 文件格式 后期改成装饰器的格式
+#------------------------------------------------------华丽的分割线------------------------------------------------------------
+baseUrl ='/data/operate.anfeng.com/dev/trunk/www'
+db_name  = 'anfeng_operate'
+db_user = 'root'
+db_pass = '123456'
+db_host = '192.168.1.246'
+db_encode ='utf8'
+#保存解析数据
+def CsvSave(dat):
+    if not dat:
+        print("无数")
+        return
+    db = pymysql.connect(db_host, db_user, db_pass, db_name, charset=db_encode)
+    cursor = db.cursor()
+    # SQL 插入语句
+    sql = """ 
+         SELECT * from af_bill_dx WHERE sn ='%s'
+     """
+    try:
+        cursor.execute(sql %dat['sn'])
+        row = cursor.fetchone()
+        sn = dat['sn']
+        fee = dat['fee']
+        cost =dat['cost']
+
+        if not row:  # 当前数据不存在
+            # 写入当前的数据库
+            insql = "Insert into af_bill_dx (`sn`,`fee`,`cost`,`sheet`)values('%s','%s','%s','%s')" % (sn,fee,cost,dat['sheet'])
+            try:
+                cursor.execute(insql)
+                db.commit()
+            except:
+                db.rollback()
+        else:
+            upsql=''
+            if dat['cost'] !=dat['fee']:
+                if dat['fee'] !="":
+                    upsql = "update af_bill_dx set fee = '%s',status=1 where sn ='%s'" % (dat['fee'],dat['sn'])
+                if dat['cost'] !="":
+                    upsql = "update af_bill_dx set cost = '%s'  ,status=1  where sn ='%s'" % (dat['cost'], dat['sn'])
+                if dat['fee'] !='' and dat['cost'] !='':
+                    upsql = "update af_bill_dx set fee = '%s',cost ='%s',status=1  where sn ='%s'" % (dat['fee'],dat['cost'] ,dat['sn'])
+            else:
+                upsql = "update af_bill_dx set status = 1 where sn ='%s'" % (dat['sn'])
+
+            cursor.execute(upsql)
+            db.commit()
+            # 已经存在更新内容
+        db.close()
+    except BaseException as e:
+        print("jb====>",e)
+        print("Error: unable to fetch data")
+
+#解析当前的excel
+def ParseExcel(urla,filename):
+    #解析xlsx
+    print(filename)
+    data = xlrd.open_workbook(urla)
+    num = len(data.sheets())
+
+    for i in range(0,num,1):
+        IsCkIndex = True
+        startParse = False
+        dat_cell = data.sheets()[i] #获取当前的每一个shell
+        #获取第一行的数据获取当前总行数
+        ros_num = dat_cell.nrows
+        try:
+            Indexar = []
+            for j in range(ros_num):
+                rows = dat_cell.row_values(j)
+                if IsCkIndex == True:
+                    index = ParseIndexer(rows)
+                    i_num = index.count(0)
+                    print(index)
+                    if i_num < 3:
+                        Indexar = index  # 分别对象这 用户的订单号 收入金额  服务费
+                        startParse = True
+                        IsCkIndex = False
+                        continue
+                if startParse == True:
+                    dt = {}
+                    dt['sn'] = str(rows[Indexar[0]]).strip().strip("`").strip("\t")[:36] # 订单号
+                    dt['fee'] = str(rows[Indexar[1]]).strip().strip("`").strip("\t")  # 当前充值总金额
+                    dt['cost'] = str(rows[Indexar[2]]).strip().strip("`").strip("\t")  # 当前的费用
+                    dt['sheet']= filename+"_"+str(i)
+                    CsvSave(dt)
+        except BaseException as e:
+            IsCkIndex = True
+            startParse = False
+#获取当前目录结构下面的内容
+def getPathDat(path):
+    for parent, dirnames, filenames in os.walk (path):
+        for dirname in dirnames:
+            getPathDat(os.path.join(path,dirname))
+        #遍历当前的文件
+        for filename in filenames:  # 输出文件信息
+            fileExtends = os.path.splitext(filename)[1]
+            if fileExtends == ".csv":
+                fpath = os.path.join(path, filename)
+            #如果当前的是压缩文件解压
+            if fileExtends ==".zip":
+                print("This is  data zip")
+            if fileExtends == ".xlsx":
+                fpath = os.path.join(path, filename)
+                ParseExcel(fpath,filename)
+#param1 保存的文件名  param2 保存的文件头部 param3 执行的sql
+def exportDat(ppn,headers,sql):
+    db = pymysql.connect(db_host, db_user, db_pass, db_name, charset=db_encode)
+    cursor = db.cursor()
+    cursor.execute(sql)
+    dat = cursor.fetchall()
+    with open(ppn, 'w', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile)
+        spamwriter.writerow(headers)
+        #spamwriter.writeheader(headers)
+        for k,item in enumerate(dat):
+            pp =list(item)
+            indt =[]
+            for im in pp:
+                indt.append(str(im))
+            spamwriter.writerow(indt)
+#函数方法的入口
+if  __name__ == '__main__':
+    ppn = os.path.join(getPath(),"data")
+    #getPathDat(ppn)
+    #GetBillDat()
+    headers = ['id', '订单号', '充值金额', '费用', '状态', '来源（+1）']
+    sqls = "SELECT * FROM af_bill_dx WHERE `status` =1 and fee !=''"
+    exportDat(os.path.join(ppn,"201612对账.csv"),headers,sqls)
+
