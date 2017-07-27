@@ -1,0 +1,22 @@
+import  asyncio
+import time
+
+@asyncio.coroutine #转化为协程
+def show():
+    print("This is show")
+    yield time.sleep(1)
+    print("show end")
+
+#创建一个协程
+@asyncio.coroutine
+def pk():
+    print("pk start")
+    yield time.sleep(2)
+    print("pk 3 seconds")
+
+loop =asyncio.get_event_loop()
+takes = [pk(),show()]
+loop.run_until_complete(asyncio.wait(takes))
+loop.close()
+#实现的是异步协程的，操作的
+
