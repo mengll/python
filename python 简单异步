@@ -1,22 +1,27 @@
 import  asyncio
 import time
-
+import threading
 @asyncio.coroutine #转化为协程
 def show():
+    print("当前的的线程",threading.currentThread())
     print("This is show")
-    yield time.sleep(1)
+    yield from asyncio.sleep(1)
     print("show end")
+    print("当前的的线程",threading.currentThread())
 
 #创建一个协程
 @asyncio.coroutine
 def pk():
+    print("当前的的线程",threading.currentThread())
     print("pk start")
-    yield time.sleep(2)
+    yield from asyncio.sleep(2)
     print("pk 3 seconds")
+    print("当前的的线程",threading.current_thread())
 
 loop =asyncio.get_event_loop()
-takes = [pk(),show()]
+takes = [pk(),show()] #合并成冰饭执行
 loop.run_until_complete(asyncio.wait(takes))
 loop.close()
 #实现的是异步协程的，操作的
+
 
