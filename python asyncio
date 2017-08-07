@@ -1,0 +1,128 @@
+import  asyncio
+import time
+import threading
+@asyncio.coroutine #转化为协程
+def show():
+    print("当前的的线程",threading.currentThread())
+    print("This is show")
+   # yield from asyncio.sleep(1)
+    content = asyncio.open_connection("http://www.baidu.com",80)
+    print(content) #异步的并发执行，相关的操作
+    print("show end")
+    print("当前的的线程",threading.currentThread())
+
+#创建一个协程
+@asyncio.coroutine
+def pk():
+    print("当前的的线程",threading.currentThread())
+    print("pk start")
+   # yield from asyncio.sleep(2)
+    print("pk 3 seconds")
+    print("当前的的线程",threading.current_thread())
+async def  mk():
+    print("This async function!-------")  #实现并发 aswait 阻塞等待
+    await asyncio.sleep(0.1) #阻塞等待
+
+loop =asyncio.get_event_loop()
+takes = [pk(),show(),mk()] #合并成冰饭执行
+loop.run_until_complete(asyncio.wait(takes)) #
+loop.close()
+#实现的是异步协程的，操作的
+print("财务对账")
+#执行异步的文件管理
+import  collections
+Card = collections.namedtuple('Card',["rank","suit"]) #当前集合的流程化
+print(Card)
+
+gg = "关键元素关键描述"
+oo  = [ord(xx) for xx in gg ] #转化成Unicode 编码的数值
+print(oo)
+ppa = [chr(pp) for pp in oo] #变成中文
+print(ppa)
+
+cont = lambda d :{
+                    str(d).strip().strip("\t")
+                   }
+t = cont("jj\t")
+print(t)  #只能使用自身的，值，进行操作
+
+#对比go 语言中的 表达式的方式 深拷贝
+yuanzu = ('12','223',"344","sdd")
+print(yuanzu.__len__())
+
+#异步的打开网络
+def PL():
+    p = (lambda r:r+1)(1)
+    print("jkl",p)
+
+PL()
+
+#获取当前值
+def ziyou():
+    nm =1
+    def show():
+        nonlocal nm
+        nm += 1 #最好是合并使用
+    return show #返回并发模型的
+
+#装饰器的日志记录
+@property
+def zhuangshi(func):
+    def kl(*args,**kwargs):
+        print("开始")
+        func(*args,**kwargs)
+        print("结束")
+    return kl
+
+#变量的作用域
+def xiecheng(func):
+    def xx(*args,**kwargs):
+        try:
+            nn=  func(*args,**kwargs)
+            next(nn)
+            return nn
+        except StopIteration as e :
+            pass
+    return xx
+#创建一个生成器的方法
+@xiecheng
+def generator():
+    try:
+        hj = yield
+        print(hj)
+    except StopIteration as e:
+        print("--->",e)
+try:
+    jj = generator()
+    jj.send(43)
+except StopIteration as e:
+    print("停止")
+# jj = generator()
+# jj.__next__()
+# jj.send("asd")
+@xiecheng
+def averager():
+    total = 0.0
+    count = 0
+    average = None
+    try:
+        while True:
+            term = yield  average
+            print('--->',average,term)
+            total += term
+            count += 1
+            average = total/count
+    except StopIteration as e:
+        print("--->",e)
+
+av = averager()
+av.send(10)
+av.send(20)
+av.send(30)
+
+from _datetime import datetime
+
+time.strftime("%Y-%m-%d %H-%i-%s",datetime.now())
+
+#异步协程的调用 获取当前的数据和0数值
+
