@@ -1,1 +1,19 @@
 yield 中的next 方式，只是回到上次执行的位置，不会给yield 传递相关的数据 而send f方法是调用next的方法并传递，相关的数据给yield 作为下次调用传递的值
+
+
+#装饰器的实现的协程
+
+def dp(uf):
+    def pp(*args,**kwargs):
+        b = uf(*args,**kwargs)
+        next(b)
+        return b
+    return pp
+@dp
+def show(ssd):
+    print "start ssd"
+    yield ssd
+    print "the end"
+
+po =show("funck")
+next(po)
