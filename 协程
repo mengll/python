@@ -17,3 +17,10 @@ def show(ssd):
 
 po =show("funck")
 next(po)
+
+#装饰器是返回一个高阶函数的函数 对象可迭代，和迭代器的区别
+#字符串，tuple list 对象是可迭代的，但是不是不是迭代器对象
+from collections import Iterator,Iterable
+isinstance("",Iterator) #判断当前的对象是否是迭代器对象
+isinstance("",Iterable) #判断当前对象是否是可迭代
+iter("") #将数据转换成迭代器对象 可使用next的方法去执行获取相关的返回值
