@@ -1,0 +1,35 @@
+from queue import Queue
+import time
+import threading
+import random
+que = Queue()
+def simple_generator(nm):
+    i = 0
+    while True:
+        ts = random.randint(1,5)
+        sm_m = "%s 会在%d秒被kill!啦啦啦，杀怪 %d "%(nm,ts,i)
+        que.put(sm_m)
+        time.sleep(ts)
+        i = i+1
+
+def simple_customer():
+
+    while True:ZX
+        content = yield
+        print("杀怪-》",content)
+
+def main():
+    pop = simple_customer()
+    pop.__next__()
+    o = threading.Thread(target=simple_generator, args=("jack chen",))
+    p = threading.Thread(target=simple_generator, args=("brus li",))
+    o.start()
+    p.start()
+
+    while True:
+        pop.send(que.get())
+
+if __name__ == "__main__":
+
+    main()
+
