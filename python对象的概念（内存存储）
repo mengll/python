@@ -1,0 +1,27 @@
+def shwo(a=1,b=[]):
+        print(a)
+        b.append(a)
+        print(id(b))
+        print(b)
+print(id(shwo(2)))
+print(id(shwo(5)))
+shwo(3)
+shwo(4)
+shwo(5)
+
+#python 遇见的错误
+
+
+class URLCatcher(object):
+    urls = []
+    def add_url(self,url):
+        self.urls.append(url)
+
+a = URLCatcher()
+a.add_url("http://www.baidu.com")
+
+b = URLCatcher()
+b.add_url("http://www.google.com")
+
+print(b.urls)
+print(a.urls)
