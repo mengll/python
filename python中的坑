@@ -1,0 +1,13 @@
+python 在开发中遇到的坑
+
+1) finally的问题
+def ts():
+
+    try:
+        return 1
+    except BaseException as e:
+        print(e)
+    finally:
+        print(212)
+ts()
+#最终的输出 走的是finnay  最终输出212
