@@ -4,4 +4,23 @@ print(id(2))
 qa=2
 print(id(qa))
 指向的内存地址是，相同的 
-2）
+2）浅拷贝只是拷贝了，引用而没有拷贝内容
+深拷贝是对于一个对象所有层次的拷贝(递归)
+def show(a,b=[]):
+        a += 1
+        print(id(b))
+        b.append(a)
+        print(b)
+show(1)
+show(2)
+show(3)
+
+c = [2,3,4]
+print(id(c))
+print("------》")
+show(4,c)
+
+show(4)
+print("--------")
+show(88,c)
+
