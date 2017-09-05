@@ -26,3 +26,30 @@ isinstance("",Iterable) #判断当前对象是否是可迭代
 iter("") #将数据转换成迭代器对象 可使用next的方法去执行获取相关的返回值
 
 既然变量可以指向函数，函数的参数能接收变量，那么一个函数就可以接收另一个函数作为参数，这种函数就称之为高阶函数。
+
+
+from collections import namedtuple
+Result = namedtuple('Result','count average')
+
+def averager():
+    total = 0.0
+    count = 0
+    average = None
+    while True:
+        term = yield
+        if term is None:
+            break
+        total += term
+        count += 1
+        average = total/count
+    return Result(count,average)
+hj = averager()
+next(hj)
+print(hj.send(2))
+print(hj.send(3))
+try:
+    print(hj.send(None))
+except StopIteration as exc:
+    result = exc.value
+
+print(result)
