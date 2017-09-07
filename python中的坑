@@ -11,3 +11,15 @@ def ts():
         print(212)
 ts()
 #最终的输出 走的是finnay  最终输出212
+2)传值和传引用
+字符串，数字，元祖在传递的不可改变对象在传递过程中使用的是值传递，列表，字典传递是引用传递
+a = 2
+print(id(a))
+b = 2
+print(id(b))
+c=  tuple(['2333'])
+print(c)
+d = tuple(['2333'])
+print(d)
+print(id(c))
+print(id(d))
