@@ -1,0 +1,15 @@
+class Opened():
+    def __enter__(self):
+        print("this is the value of ")
+        return 9999
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        print("This is ")
+
+op = Opened()
+
+with op as pp:
+    print(pp,"This is back data")
+    raise EOFError('d')
+    print("2312")
+
+#with
