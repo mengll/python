@@ -1,0 +1,6 @@
+1）
+ite =(x for x in open('a.txt'))
+print(next(ite))
+print(next(ite))
+高级的生成的读取文件内容的方式
+2）
