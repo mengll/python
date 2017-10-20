@@ -28,3 +28,6 @@
    #返回当前对象的，的地址，要转换成 list 的对象的形式，访问
     i = filter(flter,dat)
     print(list(i))
+
+4）当前的数据的排序的
+  sorted(['bob', 'about', 'Zoo', 'Credit'], key=str.lower)
