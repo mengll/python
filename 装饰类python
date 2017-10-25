@@ -1,0 +1,16 @@
+class Log :
+    def __init__(self,func):
+        print("This is init")
+        print("This is init")
+        self.__func = func
+
+    def __call__(self, *args, **kwargs):
+        print("This is zhuangshi")
+        self.__func(*args,**kwargs)
+
+@Log
+def show():
+    print("This is how")
+
+if __name__ == "__main__":
+    show()
