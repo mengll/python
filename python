@@ -1,0 +1,56 @@
+# _*_ coding: utf8 _*_
+
+
+from threading import Thread
+
+topic_name = "TY_CREATE_ACCOUNT"
+loop = asyncio.get_event_loop()
+
+def asclose():
+    loop.close()
+
+#存储用
+async def save_user_regiser(adt):
+        print("This is be best!")
+
+async def adt_manager(adt):
+        print("This is event logs",adt)
+
+def start_consume_userregister_event():
+    kafka_consumer = KafkaConsumer(bootstrap_servers=Config().get_config('kafka', 'host'),
+                                   group_id=Config().get_config('kafka', 'group_id'),
+                                   auto_offset_reset='earliest',
+                                   enable_auto_commit=True)
+    kafka_consumer.subscribe([topic_name])
+
+    newevnt = asyncio.new_event_loop()
+    t = Thread(target=startloop, args=(newevnt,))
+    t.start()
+
+    for msg in kafka_consumer:
+        asyncio.run_coroutine_threadsafe(gotest(msg), newevnt)  # 动态监测当前数据
+
+async def gotest(msg):
+
+    n_req = AnasdkRequest()
+    n_req.ParseFromString(msg.value)
+
+    tasks = [
+        asyncio.ensure_future(save_user_regiser(n_req)),  # 添加响应时间
+        asyncio.ensure_future(adt_manager(n_req))
+    ]
+
+    loop.run_until_complete(asyncio.wait(tasks))
+    tasks[0].result()
+
+def startloop(loop):
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+if __name__ == '__main__':
+    try:
+        start_consume_userregister_event()
+    except BaseException as e:
+        print("生成数据错误",e)
+    finally:
+        asclose()
