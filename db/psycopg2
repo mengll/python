@@ -23,7 +23,7 @@ class Pg(object):
     #执行查询操作
     def query(self,sql):
         try:
-            cursor =self.engine.cursor(cursor_factory=psycopg2.extras.RealDictCursor) #设置查询内容为为字典
+            cursor =self.getsession()
             cursor.execute(sql)
             return cursor.fetchall()
         except BaseException as e :
@@ -32,21 +32,36 @@ class Pg(object):
         finally:
             cursor.close()
 
+    #写入数据内容
+    def insert(self,sql):
+        try:
+            cursor = self.getsession()
+            cursor.execute(sql)
+            self.engine.commit()
+        except BaseException as e:
+            print(e)
+            self.engine.rollback()
+        finally:
+            cursor.close()
 
     def getsession(self):
-        return  self.engine.cursor()
+        return  self.engine.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    #关闭当前的库链接
+    #关闭当前的库链接 关闭数据库链接
     def close(self):
+        self.engine.close()
         pass
 
 
 if __name__ == "__main__":
     pg = Pg()
-
     try:
         dt = pg.query("select id from ty_user_account where rid =32268 and pid = 1706  and ucid = 13256814 ")
         print(dt)
+        dts = pg.query("select id,ucid from ty_user_account where rid =32268 and pid = 1706  and ucid = 13256814 ")
+        print(dts)
+        dtsa = pg.query("select count(id) as total from ty_user_account where rid =32268 and pid = 1706  and ucid = 13256814 ")
+        print(dtsa)
     except BaseException as e:
         print(e)
 
