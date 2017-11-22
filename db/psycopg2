@@ -1,0 +1,52 @@
+# _*_ coding: utf8 _*_
+# pg链接数据库
+import psycopg2
+from psycopg2.extras import DictCursor
+from common_utils.config import Config
+class Pg(object):
+
+    def __init__(self):
+        cf = Config().get_config
+        self.host     = cf('greenplum', 'host')
+        self.port     = cf('greenplum', 'port')
+        self.database =cf('greenplum', 'database')
+        self.username = cf('greenplum', 'username')
+        self.password = cf('greenplum', 'password')
+        self.connect()
+    #链接当前的库
+
+    def connect(self):
+        uri = "postgresql://{username}:{password}@{host}:{port}/{database}" \
+            .format(host=self.host, port=int(self.port), database=self.database, username=self.username, password=self.password)
+        self.engine = psycopg2.connect(uri)
+
+    #执行查询操作
+    def query(self,sql):
+        try:
+            cursor =self.engine.cursor(cursor_factory=psycopg2.extras.RealDictCursor) #设置查询内容为为字典
+            cursor.execute(sql)
+            return cursor.fetchall()
+        except BaseException as e :
+            print(e)
+            return []
+        finally:
+            cursor.close()
+
+
+    def getsession(self):
+        return  self.engine.cursor()
+
+    #关闭当前的库链接
+    def close(self):
+        pass
+
+
+if __name__ == "__main__":
+    pg = Pg()
+
+    try:
+        dt = pg.query("select id from ty_user_account where rid =32268 and pid = 1706  and ucid = 13256814 ")
+        print(dt)
+    except BaseException as e:
+        print(e)
+
