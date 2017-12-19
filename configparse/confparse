@@ -1,0 +1,29 @@
+import configparser
+import os
+import sys
+import traceback
+
+
+# selection 链接的数据库配置名， keys 配置中键
+def get_config(conf, section, key):
+    config = configparser.ConfigParser()
+    path = os.path.dirname(os.path.dirname(__file__)) + "/conf/" + conf + ".conf"
+    config.read(path)
+    try:
+        p = config.get(section, key)
+        return p
+    except BaseException as e:
+        traceback.print_exc()
+
+
+def set_config_value(conf, section, key, value):
+    config = configparser.ConfigParser()
+    path = os.path.dirname(os.path.dirname(__file__)) + "/conf/" + conf + ".conf"
+    config.read(path)
+    try:
+        config.set(section, key, str(value))
+        fh = open(path, 'w')
+        config.write(fh)  # 把要修改的节点的内容写到文件中
+        fh.close()
+    except BaseException as e:
+        traceback.print_exc()
