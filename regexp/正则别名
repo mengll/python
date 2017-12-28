@@ -1,0 +1,10 @@
+1）查询的时候，给相关的值别名
+
+    #正则匹配标签
+    metea = "<html><h1>www.itcast.cn</h1></html>"
+    mt = re.match("<(?P<name1>\w+)>.*</(?P=name1)>",metea)
+    if mt != None:
+        doa = mt.group()
+        print(doa)
+
+\w+ 匹配到的数据 设置它的别名是（？P<name1>）设置别名为name1   后期使用的时候 （?P=name1）设置当前匹配上的内容
