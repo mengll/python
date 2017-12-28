@@ -8,3 +8,15 @@
         print(doa)
 
 \w+ 匹配到的数据 设置它的别名是（？P<name1>）设置别名为name1   后期使用的时候 （?P=name1）设置当前匹配上的内容
+
+2）正则的替换的功能的实现
+   #正则的高级使用的方式 search
+    kl = "fjwhereareyou"
+    fj = re.search('fj',kl)
+    if fj != None:
+        jjk = fj.group()
+        print(jjk)
+
+    ffj = re.sub('fj','fujing',kl)
+    if ffj != None:
+        print(ffj)
