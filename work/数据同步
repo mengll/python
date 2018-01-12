@@ -1,0 +1,391 @@
+# _*_ coding: utf8 _*_
+
+from bson import Code
+from math import ceil
+import sys
+import datetime
+from pymongo import MongoClient
+
+from config.config import SystemConfig,get_config
+reload(sys)
+
+sys.setdefaultencoding('utf-8')
+
+class UserRegister(object):
+
+    def __init__(self):
+        self.anfeng = self.init_db(host=get_config("mysql","db_host"),
+                                         port=get_config("mysql","db_port"),
+                                         username=get_config("mysql","db_user"),
+                                         password=get_config("mysql","db_pass"),
+                                         database=get_config("mysql","db_name"))
+
+        self.report = self.init_db(host=SystemConfig.get_mysql_host(),
+                                    port=SystemConfig.get_mysql_port(),
+                                    username=SystemConfig.get_mysql_username(),
+                                    password=SystemConfig.get_mysql_password(),
+                                    database=SystemConfig.get_msyql_database())
+
+        self.mongodb = self.mongo_init()
+        pass
+
+
+    def mongo_init(self):
+        # mongo_client = MongoClient('mongodb://admin:ec84baa15b7(*&@192.168.1.53:44128')
+        uri = "mongodb://admin:ec84baa15b7@10.13.47.128:27017/log?authSource=admin"
+        mongo_client = MongoClient(uri)
+        mongo_log_db = mongo_client['log']
+        return mongo_log_db
+
+    def init_db(self,host, port, username, password, database):
+        # 导入依赖模块
+        from untils.MysqlClient import MysqlClient
+        db = MysqlClient(host=host, port=port,
+                         username=username, password=password, datebase=database)
+        return db
+
+    def yestday(self,format="%Y%m%d"):
+        dt = datetime.datetime.now()
+        yes_day = dt + datetime.timedelta(days=-1)
+        return yes_day.strftime(format), yes_day.year
+
+    def today(self,format="%Y%m%d"):
+        dt = datetime.datetime.now()
+        current = dt.strftime(format)
+        return current
+    def dayTypechange(self,inputs,format):
+
+        dt = datetime.datetime.strptime(inputs, "%Y%m%d")
+        return dt.strftime(format)
+
+
+    def getPage(self, total, pageSize=1000):
+        page = 1
+        pages = int(ceil(float(total) / pageSize))
+        return page, pageSize, pages
+
+    # 数据同步到MySQL数据库中 all 某天-某天的数据 tday 生成今天的数据
+    def start_stat(self, _type, start_time='20140101', end_time='20140101'):
+        # 当前空的列
+        ze = ["none", "pid", "rid", "all"]
+        if _type == "tday":
+            self.report.insert("delete from user_register_statis_today")
+
+        af_reg_sql = '''select date as af_date, {af_reg} count(DISTINCT ucid) as reg_count ,count(DISTINCT device_id) as device_count FROM ucusers_pid_reg where {where} GROUP BY {group}'''
+        for zero in ze:
+            table = 'user_register_statis'
+
+            if zero == "all":
+
+                af_reg = '''
+                                if(false,1,0) as rid,
+                                if(false,1,0) as pid,
+                '''
+                group = "date"
+            elif zero == "rid":
+                af_reg = '''
+                                if(false,1,0) as rid,
+                                    pid,
+                '''
+                group = "date,pid"
+            elif zero == "pid":
+                af_reg = '''
+                                rid,
+                                if(false,1,0) as pid,
+                '''
+                group = "date,rid"
+            else:
+                af_reg = '''
+                                 rid,
+                                 pid,
+                '''
+                group = "date,rid,pid"
+
+            if _type == 'all':
+                all_sql = af_reg_sql.format(af_reg=af_reg,group=group,where='date >= "%s" AND date < "%s"' % (start_time, end_time))
+
+                df_reg = self.anfeng.query(all_sql)
+            else:
+                table = 'user_register_statis_today'
+                sql =  af_reg_sql.format(af_reg=af_reg ,group=group, where= " date = from_unixtime(unix_timestamp(),'%Y%m%d') ")
+                df_reg = self.anfeng.query(sql)
+
+            data_count = len(df_reg)
+            if data_count == 0:
+                return
+
+            batch_data_value_list = []
+
+            batch_sql = ''
+            page,pageSize,pages = self.getPage(data_count,1000)
+
+            for item in df_reg:
+
+                item_value = "(%s, %s, %s, %s, %s)" % (
+                    item['af_date'], item['pid'], item['rid'], item['reg_count'], item['device_count'])
+
+                batch_data_value_list.append(item_value)
+
+                lenList = len(batch_data_value_list)
+
+                if (lenList == pageSize) or (page >= pages and data_count % pageSize == lenList):
+
+                    batch_sql = """			
+                                INSERT INTO %s (af_date, pid, rid, reg_count, device_count)
+                                VALUES
+                                %s
+                                ON DUPLICATE KEY UPDATE
+                                reg_count =  VALUES(reg_count),
+                                device_count =  VALUES(device_count)
+                            """ % (table, ",".join(batch_data_value_list))
+                    self.report.insert(batch_sql)
+                    batch_data_value_list = []
+                    page += 1
+
+    # 生成今日设备数
+    #生成历史设备信息 mongo聚合当前的设备数 聚合设备数
+    def parseDevice(self,start_date,end_date,out_tb,need_group=True):
+        if need_group ==False:
+            return
+
+        user_collection =    self.mongodb['device_info_log']
+        start_time =  datetime.datetime.strptime(start_date,"%Y%m%d")
+        end_time =  datetime.datetime.strptime(end_date,"%Y%m%d")
+        print "聚合开始",start_time,end_time
+        map = Code('''function() {
+                    if(this.created_at){
+                        var tim = this.created_at.toISOString().substring(0,10);
+                        tim = tim.split("-").join("")
+                        var key = this.uuid+":"+this.rid+":"+this.pid;
+                        emit(key,tim);
+                    }
+                }
+                ''')
+
+        reduce = Code('''function(cat_id,numbers) {
+                var min = numbers[0];
+                return min;
+        }''')
+
+        user_collection.map_reduce(map,reduce,out_tb,query={"$and":[{"created_at":{"$gte":start_time}},{"created_at":{"$lt":end_time}}]},sort={"created_at":1})
+        print("聚合end")
+
+    #设备数据解析写入到 device_info 子方法
+    def deviceParse(self,data,res,table,data_count,isall=False):
+
+        batch_data_value_list = []
+        if data_count == 0:
+            return
+
+        page, pageSize, pages = self.getPage(data_count, 1000)
+
+        for k, item in enumerate(data):
+            # 合并到汇总数据中
+
+            ids = item['_id']
+            dat = str(ids).split(':')
+            uuid = dat[0]
+            rid = dat[1]
+            pid = dat[2]
+
+            createTime = item['value']
+            item_value = "('%s', %s, %s, %s,1)" % (uuid, rid, pid, createTime)
+            batch_data_value_list.append(item_value)
+
+            lenList = len(batch_data_value_list)
+
+            if (lenList == pageSize) or (page >= pages and data_count % pageSize == lenList):
+
+                batch_sql = """
+                                                     INSERT INTO %s (uuid, rid, pid, createTime,reg_count)
+                                                     VALUES
+                                                     %s
+                                                     ON DUPLICATE KEY UPDATE
+                                                     reg_count = VALUES(reg_count)
+                                                   """ % (table, ",".join(batch_data_value_list))
+
+                print("总的数据量 %d页 当前 %d"%(pages,page))
+
+                self.report.insert(batch_sql)
+                batch_data_value_list = []
+                page += 1
+
+
+
+    #增量设备数据 分级别 同步到device_info 激活设备表
+
+    def incrDeviceDat(self,type,need_sync=False):
+
+        table = "device_info"
+        res = self.mongodb["res"]
+
+        if type == "tday":
+
+            st_day = self.today()
+            dt = datetime.datetime.strptime(st_day, "%Y%m%d")
+            end_day = dt + datetime.timedelta(days=1)
+            #聚合
+            self.parseDevice(st_day,end_day.strftime("%Y%m%d"),'res_tday',True)
+
+            res_dat = self.mongodb['res_tday']
+            dat = res_dat.find_one({})
+
+            self.deviceParse(res_dat.find({}),res,table, res_dat.count())
+
+        elif type == "yday":
+            #生成昨天数据
+            st_day,year = self.yestday()
+            end_day = self.today()
+            self.parseDevice(st_day, end_day, 'res_yday',True)
+
+            res_dat = self.mongodb['res_yday']
+            self.deviceParse(res_dat.find({}), res, table,res_dat.count())
+
+        else:
+
+            if need_sync == "True":
+                #生成聚合到前天的数据
+                st_day, year = self.yestday()
+                print "now"
+                self.parseDevice('20170702',st_day,"res",True)
+
+                data_count = res.find({}).count()
+                if data_count == 0:
+                    return
+
+                page, pageSize, pages = self.getPage(data_count, 1000)
+
+                #同步当前的数据到MySQL 中
+                for page in range(pages):
+                    dat = res.find({}).skip(page * pageSize).limit(pageSize)
+                    self.deviceParse(dat, res, table,True)
+                    print(page)
+                pass
+
+    #点到点的时间聚合
+    def dayToDay(self,start,end):
+        res = self.mongodb["res"]
+        table = "device_info"
+
+        self.parseDevice(start, end, "res", True)
+
+        data_count = res.find({}).count()
+        if data_count == 0:
+            return
+
+        page, pageSize, pages = self.getPage(data_count, 1000)
+
+        # 同步当前的数据到MySQL 中
+        for page in range(pages):
+            dat = res.find({}).skip(page * pageSize).limit(pageSize)
+            self.deviceParse(dat, res, table, True)
+            print(page)
+        pass
+
+
+    #激活设备数同步到数据总表中
+    def syncDat(self,start,end,tb):
+        print start,end
+        start   = self.dayTypechange(start,"%Y%m%d")
+        end     = self.dayTypechange(end, "%Y%m%d")
+
+        ze      = ["none", "pid", "rid", "all"]  #当前的数据
+        table   = "device_info"
+        uptable = tb
+
+        bsql    = "select count(*) as total,createTime,rid,pid from {table} where createTime between {start} and {end} ".format(table=table,start =start,end=end)
+
+        tb      = ""
+
+        for item in ze:
+
+            if item == "none":
+                where =  " group by createTime,rid,pid "
+
+            elif item == "pid":
+                where = " group by createTime,rid "
+
+            elif item == "rid":
+                where = " group by createTime,pid "
+
+            else:
+                where = " group by createTime "
+
+            sl_sql = bsql + where
+            runsql = "select count(*) as total from ({sql}) as tt".format(sql=sl_sql)
+
+            total = self.report.query(runsql)
+
+            data_count = total[0]["total"]
+            page, pageSize, pages = self.getPage(data_count, 1000)
+
+            if data_count == 0:
+                return
+
+            print data_count ,pages
+            for page in range(pages):
+
+                sl_sql +" limit {skip},{limit}".format(skip=page * pageSize,limit=pageSize)
+                dat = self.report.query(sl_sql)
+
+                for ditem in dat:
+
+                    rid     = ditem["rid"]
+                    pid     = ditem["pid"]
+                    afdate  = ditem["createTime"]
+
+                    if item == "all":
+                        rid = pid = 0
+                    if item == "rid":
+                        rid = 0
+                    if item == "pid":
+                        pid = 0
+
+                    upsql = "update {table} set active_count = {value} where rid={rid} and pid={pid} and af_date={afdate}".format(table=uptable,value= ditem['total'],rid=rid,pid=pid,afdate=afdate)
+                    print "更新数据总页数%d 运行到 %d"%(pages,page)
+
+                    self.report.insert(upsql)
+
+    #统计某个时间段的数据 格式例如 2017-06-09
+    def syncAll(self,start,end):
+        nowday = datetime.datetime.now()
+        st = start
+        mmdy = ""
+        while mmdy < end:
+            dt = datetime.datetime.strptime(st, "%Y%m%d")
+            mdy = dt + datetime.timedelta(days=1)
+            mmdy = mdy.strftime('%Y%m%d')
+
+            print("统计" + st + "-" + mmdy + "天的数据")
+            jb = UserRegister()
+            jb.start_stat("all", st, mmdy)
+
+            st = mmdy
+            pass
+
+    #更新device_info ucid
+
+    def updateUser(self,start,end):
+
+        sql = "select count(*) as total from device_info where createTime >= %s and createTime <= %s "%(start,end)
+        total = self.report.query(sql)
+        data_count = total[0]["total"]
+        page, pageSize, pages = self.getPage(data_count, 1000)
+
+        if data_count == 0:
+            return
+
+        for page in range(pages):
+            sl = "select * from device_info where createTime >= %s and createTime <= %s  order by createTime desc limit %d,%d" % (start, end,page * pageSize,pageSize)
+            dat = self.report.query(sl)
+            for item in dat:
+
+                uuid = str(item['uuid']).strip('()')
+                if len(uuid) < 8:
+                    continue
+                usql = "select * from ucusers where device_id = '%s'" %(str(item['uuid']))
+                dat = self.anfeng.query(usql)
+                if dat:
+                    upsql = "update device_info set ucid = '%s' where uuid = '%s'"%(dat[0]['ucid'],str(item['uuid']))
+                    self.report.insert(upsql)
+            print "数据总量:%s,总页码:%s,当前第:%s"%(data_count, pages,page)
