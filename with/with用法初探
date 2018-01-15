@@ -1,0 +1,12 @@
+1）创建with 的入口类
+Game的魔术方法
+class Game():
+    def __enter__(self): 
+        print("This is start")
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        print("This is end!")
+
+    def gamer(self):
+        print("GAMER")
