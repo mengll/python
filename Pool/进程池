@@ -1,0 +1,14 @@
+from multiprocessing import Pool
+def show_name(name):
+        time.sleep(2) 
+
+if __name__ == "__main__":
+    
+    #开启多进程，进程池
+    pl = Pool(4)
+    for i in range(5):
+        pl.apply_async(show_name,args=(i,))
+
+    print("wait all Done")
+    pl.close() #此处的关闭是关闭当前队列，不能再向队列中添加数据
+    pl.join()  #等待当前所有的任务，执行完成
