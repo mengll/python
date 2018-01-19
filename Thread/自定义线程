@@ -1,0 +1,42 @@
+import threading
+import time
+
+from gevent import monkey; monkey.patch_all()
+import gevent
+
+class MyThread(threading.Thread):
+
+    def __init__(self,*args,**kwargs):
+        super(MyThread,self).__init__(*args,**kwargs)
+        print(args)
+
+    def run(self):
+        print("This is zi dingyi wenben")
+        print(self._args)
+        self._target(self._args[0])
+
+def main(a):
+    print("This is make",a)
+    time.sleep(a)
+
+if __name__ == "__main__":
+    thread_list = []
+    # for i in range(10):
+    #     t = threading.Thread(target=main,args=(i,))
+    #     t.start()
+    #     thread_list.append(t)
+    # print("3")
+    #
+    # for t in thread_list:
+    #     t.join()
+
+    #线程的生成的方式
+    gevent.joinall([
+        gevent.spawn(main,i)  for i in range(10) #列表生成式
+    ])
+
+    #创建自定义线程，编程
+    gm = MyThread(target=main,args=(28,))
+    gm.start()
+
+    #主线程和主进程的区别
