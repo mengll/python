@@ -1,0 +1,69 @@
+from concurrent.futures import ThreadPoolExecutor,ProcessPoolExecutor
+import time
+# pip3 install requests
+import requests
+
+# ########## 1. 并发发送Http请求，获取结果 ##########
+"""
+def task(url):
+    response = requests.get(url)
+    print('得到结果:',url,len(response.content))
+    # ....
+
+pool = ThreadPoolExecutor(2)
+url_list = [
+    'http://www.oldboyedu.com',
+    'http://www.autohome.com.cn',
+    'http://www.baidu.com',
+]
+for url in url_list:
+    print('开始请求',url)
+    # 去连接池中获取链接
+    pool.submit(task,url)
+"""
+# ########## 2. 并发远程主机并执行命令 ##########
+"""
+def task(host):
+    import paramiko
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(hostname=host, port=22, username='wupeiqi', password='123')
+    stdin, stdout, stderr = ssh.exec_command('df')
+    result = stdout.read()
+    ssh.close()
+    print(result)
+
+pool = ThreadPoolExecutor(2)
+host_list = [
+    'c1.com',
+    'c2.com',
+    'c3.com',
+]
+for host in host_list:
+    print('开始请求',host)
+    # 去连接池中获取链接
+    pool.submit(task,host)
+"""
+def txt(future):
+    download_response = future.result()
+    print('处理中',download_response.url,download_response.status_code)
+
+def download(url):
+    response = requests.get(url)
+
+    return response # response包含了下载的所有内容
+
+pool = ThreadPoolExecutor(2)
+url_list = [
+    'http://www.oldboyedu.com',
+    'http://www.autohome.com.cn',
+    'http://www.baidu.com',
+]
+for url in url_list:
+    # 去连接池中获取链接
+    # 去下载吧
+    print('开始请求',url)
+    future = pool.submit(download,url)
+    # 下载完成之后，执行txt函数
+    future.add_done_callback(txt)
+
