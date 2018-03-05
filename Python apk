@@ -1,0 +1,13 @@
+# _*_ coding: utf8 _*_
+import zipfile
+from zipfile import ZipFile
+import sys
+if __name__ == "__main__":
+    if len(sys.argv) >2:
+        apk = sys.argv[1]
+        content = sys.argv[2]
+        with ZipFile(apk, 'a') as testzip:
+            testzip.comment = bytes(content, encoding = "utf8")
+    else:
+        print("参数不够")
+
