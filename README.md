@@ -48,4 +48,9 @@ def getPathDat(path):
         finally :
             pass
 
+
+
+     cj = xlrd.xldate.xldate_as_datetime(dat_cell.cell(j, index_a['create_date_index']).value, 0)
+                        cja = cj.strftime("%Y%m%d") # 执行的日期
+
 ```
